@@ -1,14 +1,14 @@
+import 'package:ads_frontend/models/simulation_models.dart';
 import 'package:ads_frontend/views/agency/simulation_form_screen.dart';
+import 'package:ads_frontend/views/agency/ad_analytics_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/adAssignment.dart';
 import '../../models/agency.dart';
 import '../../services/agencyApiService.dart';
 import '../advertiser/requestsScreen.dart';
-import '../advertiser/statsScreen.dart';
-import '../advertiser/myAdsScreen.dart';
 import '../advertiser/accountScreen.dart';
-
+import '../../services/simulation_api_service.dart';
 
 class AgencyHomeScreen extends StatefulWidget {
   const AgencyHomeScreen({super.key});
@@ -24,9 +24,12 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
 
   bool _loadingAgency = true;
   bool _loadingAssignments = false;
+  bool _loadingAllocated = false;
   String? _error;
+  String? _allocatedError;
 
   int _currentIndex = 0;
+  Map<int, AllocatedTimeResponse> _allocatedTimes = {};
 
   @override
   void initState() {
@@ -56,10 +59,14 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
 
       final assignments =
       await AgencyApiService.getAssignmentsByAgency(agency.agencyId);
+
       setState(() {
         _assignments = assignments;
         _loadingAssignments = false;
       });
+
+      // ✅ FIX: always load allocated times after assignments succeed
+      await _loadAllocatedTimes();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -74,6 +81,8 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
     setState(() {
       _loadingAssignments = true;
       _error = null;
+      _allocatedError = null;
+      _allocatedTimes = {};
     });
     try {
       final assignments =
@@ -82,6 +91,7 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
         _assignments = assignments;
         _loadingAssignments = false;
       });
+      await _loadAllocatedTimes();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -90,12 +100,36 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
     }
   }
 
+  Future<void> _loadAllocatedTimes() async {
+    if (_assignments.isEmpty) return;
+
+    setState(() => _loadingAllocated = true);
+
+    for (final ad in _assignments) {
+      try {
+        final data = await SimulationApiService.getAllocatedTime(ad.adId);
+        if (mounted) {
+          setState(() => _allocatedTimes[ad.adId] = data);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Failed to load allocated time for adId=${ad.adId}: $e');
+        // Continue loading others even if one fails
+      }
+    }
+
+    if (mounted) setState(() => _loadingAllocated = false);
+  }
+
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'active':    return const Color(0xff00c4aa);
-      case 'completed': return Colors.blue;
-      case 'paused':    return Colors.orange;
-      default:          return Colors.grey;
+      case 'active':
+        return const Color(0xff00c4aa);
+      case 'completed':
+        return Colors.blue;
+      case 'paused':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -144,48 +178,41 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xfff5f5f5),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xff00c4aa),
         unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed, // needed for 5 items
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           if (index == _currentIndex) return;
           setState(() => _currentIndex = index);
 
           if (index == 1) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const StatsScreen()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => SimulationFormScreen(agency: _agency!)),
+            );
           } else if (index == 2) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => SimulationFormScreen(agency: _agency!)));
-          } else if (index == 3) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const MyAdsScreen()));
-          } else if (index == 4) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AccountScreen()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AccountScreen()),
+            );
           }
         },
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: 'Home'),
+              icon: Icon(Icons.bar_chart), label: 'Activity'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Stats'),
-          // ── new tab ──────────────────────────────────────────────────
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bolt_outlined), label: 'Activity'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.receipt), label: 'My Ads'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person), label: 'Account'),
+              icon: Icon(Icons.person_outline), label: 'Account'),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // ── HEADER ──────────────────────────────────────────────────────
           Container(
             width: double.infinity,
@@ -204,8 +231,7 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
                   const SizedBox(height: 4),
                   Text(
                     _agency!.agencyName,
-                    style: const TextStyle(
-                        fontSize: 14, color: Colors.black87),
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                 ],
               ],
@@ -219,7 +245,6 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                // Received Requests button
                 Expanded(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -255,9 +280,7 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
                     ),
                   ),
                 ),
-                // Activity shortcut button
                 const SizedBox(width: 12),
-                // Ad Simulation button
                 Expanded(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -266,8 +289,8 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => SimulationFormScreen(
-                                agency: _agency!),
+                            builder: (_) =>
+                                SimulationFormScreen(agency: _agency!),
                           ),
                         );
                       }
@@ -302,29 +325,61 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
             ),
           ),
 
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Assigned Ads',
-              style:
-              TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+            child: Row(
+              children: [
+                const Text(
+                  'Assigned Ads',
+                  style:
+                  TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                if (_loadingAllocated)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xff00c4aa),
+                    ),
+                  ),
+              ],
             ),
           ),
 
           if (_error != null && _agency != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_error!,
-                  style: const TextStyle(
-                      color: Colors.red, fontSize: 13)),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.red.shade400, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_error!,
+                          style: TextStyle(
+                              color: Colors.red.shade700, fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
           // ── ASSIGNMENTS LIST ───────────────────────────────────────────
           Expanded(
             child: _loadingAssignments
                 ? const Center(
-                child: CircularProgressIndicator(
-                    color: Color(0xff00c4aa)))
+              child: CircularProgressIndicator(color: Color(0xff00c4aa)),
+            )
                 : _assignments.isEmpty
                 ? const Center(
               child: Column(
@@ -335,8 +390,8 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
                   SizedBox(height: 12),
                   Text(
                     'No assigned ads yet.',
-                    style: TextStyle(
-                        color: Colors.grey, fontSize: 16),
+                    style:
+                    TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 ],
               ),
@@ -345,8 +400,8 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
               color: const Color(0xff00c4aa),
               onRefresh: _reload,
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16),
+                padding:
+                const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 itemCount: _assignments.length,
                 itemBuilder: (_, i) =>
                     _buildCard(_assignments[i]),
@@ -359,64 +414,206 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
   }
 
   Widget _buildCard(AdAssignment a) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6)
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  a.adTitle.isNotEmpty ? a.adTitle : 'Ad #${a.adId}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15),
-                  overflow: TextOverflow.ellipsis,
+    final allocated = _allocatedTimes[a.adId];
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdAnalyticsScreen(
+              adId: a.adId,
+              adTitle: a.adTitle,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 6)
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title + Status row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    a.adTitle.isNotEmpty ? a.adTitle : 'Ad #${a.adId}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                  _statusColor(a.status).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  a.status.toUpperCase(),
-                  style: TextStyle(
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _statusColor(a.status).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    a.status.toUpperCase(),
+                    style: TextStyle(
                       color: _statusColor(a.status),
                       fontSize: 11,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (a.assignedAt != null)
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined,
-                    size: 15, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  'Assigned: ${_fmt(a.assignedAt!)}',
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.grey),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
+
+            const SizedBox(height: 10),
+
+            // ✅ FIX: backend sends StartDate → mapped as assignedAt
+            if (a.assignedAt != null)
+              _infoRow(
+                icon: Icons.calendar_today_outlined,
+                iconColor: Colors.grey,
+                label: 'Assigned: ${_fmt(a.assignedAt!)}',
+              ),
+
+            // Allocated time section
+            if (_loadingAllocated && allocated == null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Color(0xff00c4aa)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Loading schedule...',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade500)),
+                ],
+              ),
+            ] else if (allocated != null) ...[
+              const SizedBox(height: 6),
+
+              if (allocated.startDate != null)
+                _infoRow(
+                  icon: Icons.date_range,
+                  iconColor: Colors.black54,
+                  label:
+                  'Start: ${_fmt(allocated.startDate!)}',
+                ),
+
+              const SizedBox(height: 4),
+
+              if (allocated.endDate != null)
+                _infoRow(
+                  icon: Icons.event,
+                  iconColor: Colors.black54,
+                  label: 'End: ${_fmt(allocated.endDate!)}',
+                )
+              else
+                _infoRow(
+                  icon: Icons.event,
+                  iconColor: Colors.black38,
+                  label: 'End: Not set',
+                  labelColor: Colors.black38,
+                ),
+
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  _chip(
+                    label:
+                    '${allocated.allocatedMinutes.toInt()} mins',
+                    bgColor:
+                    const Color(0xff00c4aa).withOpacity(0.12),
+                    textColor: const Color(0xff00c4aa),
+                  ),
+                  const SizedBox(width: 8),
+                  _chip(
+                    label:
+                    '${allocated.allocatedHours.toStringAsFixed(1)} hrs',
+                    bgColor: Colors.black12,
+                    textColor: Colors.black87,
+                  ),
+                ],
+              ),
+            ],
+
+            // Tap hint
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'View Analytics',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color(0xff00c4aa),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_ios,
+                    size: 11, color: Color(0xff00c4aa)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    Color? labelColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 12, color: labelColor ?? Colors.black54),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding:
+      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: textColor),
       ),
     );
   }

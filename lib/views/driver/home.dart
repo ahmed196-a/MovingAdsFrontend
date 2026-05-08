@@ -5,11 +5,10 @@ import '../../models/agency.dart';
 import '../../models/vehicle.dart';
 import '../../services/VehicleApiService.dart';
 import '../../services/agencyApiService.dart';
-import '../../services/gpsService.dart';       // ← new
 import '../advertiser/accountScreen.dart';
 import '../driver/registeredVehiclesScreen.dart';
-// import 'activeTripScreen.dart';                // ← new
 import 'addRouteScreen.dart';
+import 'driver_stats_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -121,7 +120,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             'Join ${agency.agencyName}',
             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -158,7 +157,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                     setDialogState(() => selectedReg = val),
               ),
               const SizedBox(height: 12),
-              // GPS notice
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -211,33 +209,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     setState(() => _joiningAgencyId = agency.agencyId);
 
     try {
-      // 1. Get current GPS location
-      Position pos;
-      try {
-        pos = await GpsService.instance.fetchOnce();
-      } catch (gpsError) {
-        // GPS failed — still link, but pass 0,0 so backend skips fence check
-        // You can also block here and show an error if strict GPS is required
-        _snack('GPS unavailable: $gpsError. Linking without location.');
-        pos = Position(
-          latitude: 0, longitude: 0,
-          timestamp: DateTime.now(),
-          accuracy: 0, altitude: 0, altitudeAccuracy: 0,
-          heading: 0, headingAccuracy: 0, speed: 0, speedAccuracy: 0,
-        );
-      }
-
-      // 2. Find the full vehicle object
       final vehicle = _userVehicles.firstWhere(
             (v) => v.vehicleReg == vehicleReg,
       );
 
-      // 3. Link + trigger auto-assign (GPS is passed to backend)
       await VehicleApiService.linkVehicleToAgency(
         vehicle:   vehicle,
         agencyId:  agency.agencyId,
-        // latitude:  pos.latitude,
-        // longitude: pos.longitude,
       );
 
       setState(() {
@@ -267,255 +245,319 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xfff0f4f4),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: _currentIndex.clamp(0, 2),
         selectedItemColor: const Color(0xff18B6A3),
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Colors.grey.shade400,
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        elevation: 12,
+        selectedLabelStyle:
+        const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
         onTap: (index) {
-          if (index == _currentIndex) return;
-          setState(() => _currentIndex = index);
-          if (index == 3) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AccountScreen()));
+          setState(() {
+            _currentIndex = index;
+          });
+
+          switch (index) {
+            case 0:
+              break;
+
+            case 1:
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DriverStatsScreen(userid: _userId),
+                  ));
+              break;
+
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AccountScreen(),
+                ),
+              );
+              break;
           }
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Stats'),
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt), label: 'My Ads'),
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Stats',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person), label: 'Account'),
+            icon: Icon(Icons.person_rounded),
+            label: 'Account',
+          ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
-            // ── HEADER ──────────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              decoration: const BoxDecoration(
-                color: Color(0xff18B6A3),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+          // ── HEADER ──────────────────────────────────────────────────────────
+          _buildHeader(),
+
+          const SizedBox(height: 20),
+
+          // ── QUICK ACTIONS ────────────────────────────────────────────────────
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Quick Actions',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xff1a1a2e),
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _quickActionCard(
+                    icon: Icons.directions_car_rounded,
+                    title: 'Registered\nVehicles',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                            const RegisteredVehiclesScreen())),
+                  ),
                 ),
-              ),
-              child: const Center(
-                child: Text('Welcome',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _quickActionCard(
+                    icon: Icons.route_rounded,
+                    title: 'Set Routes',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AddRouteScreen())),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── AGENCIES TITLE ───────────────────────────────────────────────────
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Available Agencies',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xff1a1a2e),
+                letterSpacing: -0.3,
               ),
             ),
+          ),
+          const SizedBox(height: 12),
 
-            const SizedBox(height: 16),
-
-            // ── QUICK ACTIONS ────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Quick Actions',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 12),
+          // ── VEHICLE FILTER DROPDOWN ──────────────────────────────────────────
+          if (_userVehicles.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedVehicleReg,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xff18B6A3)),
+                    hint: const Text('Select a vehicle'),
+                    items: _userVehicles
+                        .map((v) => DropdownMenuItem(
+                      value: v.vehicleReg,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.directions_car_rounded,
+                              size: 18, color: Color(0xff18B6A3)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${v.vehicleReg}  •  ${v.vehicleModel}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ))
+                        .toList(),
+                    onChanged: (val) async {
+                      if (val == null || val == _selectedVehicleReg) return;
+                      setState(() {
+                        _selectedVehicleReg = val;
+                        _selectedVehicleLinkedMap = {};
+                      });
+                      await _loadLinkedStatusForSelected(_agencies);
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 12),
+
+          // ── AGENCIES LIST ────────────────────────────────────────────────────
+          Expanded(
+            child: _loadingAgencies
+                ? const Center(
+                child: CircularProgressIndicator(
+                    color: Color(0xff18B6A3)))
+                : _agenciesError != null
+                ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline,
+                        color: Colors.red.shade300, size: 48),
+                    const SizedBox(height: 10),
+                    Text(_agenciesError!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 13)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _loadingAgencies = true;
+                          _agenciesError = null;
+                        });
+                        _init();
+                      },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                          const Color(0xff18B6A3),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                              BorderRadius.circular(12))),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+                : _agencies.isEmpty
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: _quickActionCard(
-                      icon: Icons.directions_car,
-                      title: 'Registered\nVehicles',
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                              const RegisteredVehiclesScreen())),
-                    ),
+                  Icon(Icons.business_outlined,
+                      size: 64, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No agencies available.',
+                    style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 16),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickActionCard(
-                      icon: Icons.location_on,
-                      title: 'Set Routes',
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const AddRouteScreen())),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  //Expanded(
-                    // child: _quickActionCard(
-                    //  icon: Icons.monetization_on,
-                    //  title: 'My Earnings',
-                    //   onTap: () => Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //           builder: (_) => const MyEarningsScreen())),
-                    //  ),
-                 // ),
-                 // const SizedBox(width: 12),
-                  // ── NEW: Go Online button ──────────────────────────────
-                  // Expanded(
-                  //   child: _quickActionCard(
-                  //     icon: Icons.play_circle_outline,
-                  //     title: 'Go\nOnline',
-                  //     color: Colors.black87,
-                  //     iconColor: const Color(0xff18B6A3),
-                  //     onTap: () {
-                  //       if (_selectedVehicleReg == null) {
-                  //         _snack('Please select a vehicle first.');
-                  //         return;
-                  //       }
-                        // Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(
-                        //     builder: (_) => ActiveTripScreen(
-                        //       vehicleReg: _selectedVehicleReg!,
-                        //       userId: _userId!,
-                        //     ),
-                        //   ),
-                        // );
-                      // },
-                    // ),
-                  // ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── AGENCIES TITLE ───────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Available Agencies',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 10),
-
-            // ── VEHICLE FILTER DROPDOWN ──────────────────────────────────
-            if (_userVehicles.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedVehicleReg,
-                      isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down,
-                          color: Color(0xff18B6A3)),
-                      hint: const Text('Select a vehicle'),
-                      items: _userVehicles
-                          .map((v) => DropdownMenuItem(
-                        value: v.vehicleReg,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.directions_car,
-                                size: 18,
-                                color: Color(0xff18B6A3)),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${v.vehicleReg}  •  ${v.vehicleModel}',
-                              style:
-                              const TextStyle(fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ))
-                          .toList(),
-                      onChanged: (val) async {
-                        if (val == null ||
-                            val == _selectedVehicleReg) return;
-                        setState(() {
-                          _selectedVehicleReg = val;
-                          _selectedVehicleLinkedMap = {};
-                        });
-                        await _loadLinkedStatusForSelected(_agencies);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 12),
-
-            // ── AGENCIES LIST ────────────────────────────────────────────
-            Expanded(
-              child: _loadingAgencies
-                  ? const Center(
-                  child: CircularProgressIndicator(
-                      color: Color(0xff18B6A3)))
-                  : _agenciesError != null
-                  ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: Colors.red, size: 40),
-                      const SizedBox(height: 10),
-                      Text(_agenciesError!,
-                          textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _loadingAgencies = true;
-                            _agenciesError = null;
-                          });
-                          _init();
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                            const Color(0xff18B6A3)),
-                        child: const Text('Retry',
-                            style: TextStyle(
-                                color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-                  : _agencies.isEmpty
-                  ? const Center(
-                  child: Text('No agencies available.',
-                      style: TextStyle(color: Colors.grey)))
-                  : RefreshIndicator(
-                color: const Color(0xff18B6A3),
-                onRefresh: () async {
-                  setState(() {
-                    _loadingAgencies = true;
-                    _agenciesError = null;
-                  });
-                  await _init();
-                },
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16),
-                  itemCount: _agencies.length,
-                  itemBuilder: (_, i) =>
-                      _buildAgencyCard(_agencies[i]),
-                ),
+            )
+                : RefreshIndicator(
+              color: const Color(0xff18B6A3),
+              onRefresh: () async {
+                setState(() {
+                  _loadingAgencies = true;
+                  _agenciesError = null;
+                });
+                await _init();
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: _agencies.length,
+                itemBuilder: (_, i) =>
+                    _buildAgencyCard(_agencies[i]),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding:
+      const EdgeInsets.only(top: 52, left: 20, right: 20, bottom: 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xff18B6A3), Color(0xff0e9a89)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "DRIVER",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.75),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                "Welcome back 👋",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -526,144 +568,231 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _selectedVehicleLinkedMap[agency.agencyId] == true;
     final bool isJoining = _joiningAgencyId == agency.agencyId;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 5)
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 50,
-            width: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xff18B6A3).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: isJoined || isJoining || _selectedVehicleReg == null
+          ? null
+          : () => _showJoinDialog(agency),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
-            child: const Icon(Icons.business,
-                color: Color(0xff18B6A3), size: 28),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(agency.agencyName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                    overflow: TextOverflow.ellipsis),
-                if (agency.agencyDescription.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(agency.agencyDescription,
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Agency icon
+              Container(
+                height: 54,
+                width: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xff18B6A3).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.business_rounded,
+                    color: Color(0xff18B6A3), size: 28),
+              ),
+              const SizedBox(width: 14),
+
+              // Agency info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      agency.agencyName,
                       style: const TextStyle(
-                          fontSize: 12, color: Colors.black54),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                ],
-                const SizedBox(height: 3),
-                Text(agency.ownerName,
-                    style:
-                    const TextStyle(fontSize: 11, color: Colors.grey)),
-                if (isJoined && _selectedVehicleReg != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    '🚗 $_selectedVehicleReg',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xff18B6A3),
-                        fontWeight: FontWeight.w600),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xff1a1a2e)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (agency.agencyDescription.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        agency.agencyDescription,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black54),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline_rounded,
+                            size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          agency.ownerName,
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    if (isJoined && _selectedVehicleReg != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff18B6A3).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.directions_car_rounded,
+                                size: 11, color: Color(0xff18B6A3)),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedVehicleReg!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xff18B6A3),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              // Join button
+              SizedBox(
+                width: 76,
+                height: 36,
+                child: _loadingLinkedStatus
+                    ? const Center(
+                  child: SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xff18B6A3)),
                   ),
-                ],
-              ],
-            ),
+                )
+                    : isJoined
+                    ? Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Joined',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black45),
+                    ),
+                  ),
+                )
+                    : GestureDetector(
+                  onTap: isJoining ||
+                      _selectedVehicleReg == null
+                      ? null
+                      : () => _showJoinDialog(agency),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xff18B6A3),
+                          Color(0xff0e9a89),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xff18B6A3)
+                              .withOpacity(0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: isJoining
+                          ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child:
+                          CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white))
+                          : const Text(
+                        'Join',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 80,
-            height: 36,
-            child: _loadingLinkedStatus
-                ? const Center(
-              child: SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xff18B6A3)),
-              ),
-            )
-                : ElevatedButton(
-              onPressed: isJoined ||
-                  isJoining ||
-                  _selectedVehicleReg == null
-                  ? null
-                  : () => _showJoinDialog(agency),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isJoined
-                    ? Colors.grey.shade300
-                    : const Color(0xff18B6A3),
-                foregroundColor:
-                isJoined ? Colors.black54 : Colors.black,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                elevation: isJoined ? 0 : 2,
-              ),
-              child: isJoining
-                  ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white))
-                  : Text(
-                isJoined ? 'Joined' : 'Join',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  // ── QUICK ACTION CARD ────────────────────────────────────────────────────────
   Widget _quickActionCard({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-    Color color = const Color(0xff18B6A3),
-    Color iconColor = Colors.black,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
         height: 90,
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 5)
+          gradient: const LinearGradient(
+            colors: [Color(0xff18B6A3), Color(0xff0e9a89)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xff18B6A3).withOpacity(0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 28, color: iconColor),
+            Icon(icon, size: 28, color: Colors.white),
             const SizedBox(height: 8),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: iconColor == Colors.black
-                        ? Colors.black
-                        : Colors.white)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
