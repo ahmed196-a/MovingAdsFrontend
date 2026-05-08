@@ -4,10 +4,11 @@ class Vehicle {
   final String vehicleType;
   final String vehicleStatus;
   final int vehicleOwner;
-  final String MediaType;
-  final String MediaPath;
-  final String MediaName;
-  final String? OwnerName;
+  final int? agencyId;          // ← NEW (nullable: 0 or null = not linked)
+  final String mediaType;
+  final String mediaPath;
+  final String mediaName;
+  final String? ownerName;
 
   Vehicle({
     required this.vehicleReg,
@@ -15,37 +16,42 @@ class Vehicle {
     required this.vehicleType,
     required this.vehicleStatus,
     required this.vehicleOwner,
-    required this.MediaName,
-    required this.MediaPath,
-    required this.MediaType,
-    this.OwnerName
+    this.agencyId,
+    required this.mediaName,
+    required this.mediaPath,
+    required this.mediaType,
+    this.ownerName,
   });
 
   factory Vehicle.fromMap(Map<String, dynamic> json) {
+    // AgencyId of 0 from backend means "not linked" → treat as null
+    final rawAgency = json['AgencyId'];
     return Vehicle(
-      vehicleReg: json['VehicleReg'] ?? '',
-      vehicleModel: json['VehicleModel'] ?? '',
-      vehicleType: json['VehicleType'] ?? '',
+      vehicleReg:    json['VehicleReg']    ?? '',
+      vehicleModel:  json['VehicleModel']  ?? '',
+      vehicleType:   json['VehicleType']   ?? '',
       vehicleStatus: json['VehicleStatus'] ?? '',
-      vehicleOwner: json['VehicleOwner'] ?? 0,
-      MediaName: json['MediaName'] ?? '',
-      MediaPath: json['MediaPath'] ?? '',
-      MediaType: json['MediaType'] ?? '',
-      OwnerName: json['OwnerName']
+      vehicleOwner:  json['VehicleOwner']  ?? 0,
+      agencyId:      (rawAgency == null || rawAgency == 0) ? null : rawAgency as int,
+      mediaName:     json['MediaName']     ?? '',
+      mediaPath:     json['MediaPath']     ?? '',
+      mediaType:     json['MediaType']     ?? '',
+      ownerName:     json['OwnerName'],
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      "VehicleReg": vehicleReg,
-      "VehicleModel": vehicleModel,
-      "VehicleType": vehicleType,
-      "VehicleStatus": vehicleStatus,
-      "VehicleOwner": vehicleOwner,
-      "MediaName": MediaName,
-      "MediaPath":MediaPath,
-      "MediaType":MediaType,
-      "OwnerName":OwnerName
+      'VehicleReg':    vehicleReg,
+      'VehicleModel':  vehicleModel,
+      'VehicleType':   vehicleType,
+      'VehicleStatus': vehicleStatus,
+      'VehicleOwner':  vehicleOwner,
+      'AgencyId':      agencyId ?? 0,
+      'MediaName':     mediaName,
+      'MediaPath':     mediaPath,
+      'MediaType':     mediaType,
+      'OwnerName':     ownerName,
     };
   }
 }

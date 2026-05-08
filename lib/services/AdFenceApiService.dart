@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:ads_frontend/models/matched_agency_dto.dart';
 import 'package:ads_frontend/services/ipAddress.dart';
 import 'package:http/http.dart' as http;
 import '../models/AdFence.dart';
@@ -78,7 +79,7 @@ class AdFenceApiService {
     }
   }
 
-  static Future<List<MatchedDriverGroupedDTO>> matchDrivers3(int adId) async {
+  static Future<List<MatchedAgencyDTO>> matchDrivers3(int adId) async {
     final response = await http.get(
       Uri.parse("$baseUrl/matchdrivers3/$adId"),
       headers: {
@@ -88,7 +89,7 @@ class AdFenceApiService {
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
-      return data.map((e) => MatchedDriverGroupedDTO.fromJson(e)).toList();
+      return data.map((e) => MatchedAgencyDTO.fromJson(e)).toList();
     } else {
       throw Exception("Failed to fetch matched drivers");
     }

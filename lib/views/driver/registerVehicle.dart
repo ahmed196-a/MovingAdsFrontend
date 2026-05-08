@@ -17,7 +17,19 @@ class _AddVehicleScreenState
 
   final regController = TextEditingController();
   final modelController = TextEditingController();
-  final typeController = TextEditingController();
+
+  // ── Replaced typeController with a dropdown value ──
+  String? selectedVehicleType;
+
+  final List<String> vehicleTypes = [
+    "Car",
+    "Bus",
+    "SUV",
+    "Truck",
+    "Van",
+    "Motorcycle",
+    "Rickshaw",
+  ];
 
   File? selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -44,7 +56,7 @@ class _AddVehicleScreenState
     if (selectedImage == null ||
         regController.text.isEmpty ||
         modelController.text.isEmpty ||
-        typeController.text.isEmpty) {
+        selectedVehicleType == null) {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Fill all required fields")),
@@ -66,7 +78,7 @@ class _AddVehicleScreenState
     await VehicleApiService.registerVehicle2(
       vehicleReg: regController.text,
       vehicleModel: modelController.text,
-      vehicleType: typeController.text,
+      vehicleType: selectedVehicleType!,
       vehicleOwner: userId,
       mediaFile: selectedImage!,
       mediaType: "image",
@@ -173,7 +185,30 @@ class _AddVehicleScreenState
                   _textField("Vehicle Model*", modelController),
                   const SizedBox(height: 12),
 
-                  _textField("Vehicle Type*", typeController),
+                  // ── Vehicle Type dropdown ──────────────
+                  const Text("Vehicle Type*"),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedVehicleType,
+                    items: vehicleTypes
+                        .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => selectedVehicleType = value);
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade200,
+                      hintText: "Select vehicle type",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -36,11 +36,13 @@ class _LoginViewState extends State<LoginView> {
 
     final AppUser? result = await ApiService.login(email, password);
     if (result != null) {
-      await UserSession.saveUser(result.userId, result.name, result.role);
+      await UserSession.saveUser(result.userId, result.name, result.role ,result.email ,result.rating!);
       if(result.role=='a'){
         Navigator.pushReplacementNamed(context, '/advertiserDashboard');
-      }else{
+      }else if(result.role=='d'){
         Navigator.pushReplacementNamed(context, '/driverDashboard');
+      }else{
+        Navigator.pushReplacementNamed(context, '/agencyDashboard');
       }
 
     } else {

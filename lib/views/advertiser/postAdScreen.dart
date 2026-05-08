@@ -24,7 +24,6 @@ class _PostNewAdScreenState extends State<PostNewAdScreen> {
   final ImagePicker _picker = ImagePicker();
 
   final TextEditingController titleController = TextEditingController();
-  final TextEditingController budgetController = TextEditingController();
 
   // ================= MEDIA PICKER =================
 
@@ -62,6 +61,22 @@ class _PostNewAdScreenState extends State<PostNewAdScreen> {
     );
 
     if (picked != null) {
+      // ── Date validation ──────────────────────────
+      if (!isStart && startDate != null && !picked.isAfter(startDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("End date must be after start date")),
+        );
+        return;
+      }
+      if (isStart && endDate != null && !picked.isBefore(endDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Start date must be before end date")),
+        );
+        return;
+      }
+
       setState(() {
         if (isStart) {
           startDate = picked;
@@ -224,30 +239,6 @@ class _PostNewAdScreenState extends State<PostNewAdScreen> {
                       Expanded(child: _dateField("End Date*", false)),
                     ],
                   ),
-
-                  const SizedBox(height: 14),
-
-                  // ================= BUDGET =================
-                  const Text(
-                    "Budget per km*",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-
-                  TextField(
-                    controller: budgetController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      prefixText: "\$  ",
-                      hintText: "0.00",
-                      filled: true,
-                      fillColor: Colors.grey.shade200,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -292,7 +283,7 @@ class _PostNewAdScreenState extends State<PostNewAdScreen> {
                         endingDate: endDate!,
                         userId: userId,
                         mediaFile: selectedMedia!,
-                        status: "inactive", // default when posting
+                        status: "inactive",
                       );
 
                       if (success) {
@@ -350,7 +341,7 @@ class _PostNewAdScreenState extends State<PostNewAdScreen> {
                         endingDate: endDate!,
                         userId: userId,
                         mediaFile: selectedMedia!,
-                        status: "drafted", // 👈 DIFFERENCE HERE
+                        status: "drafted",
                       );
 
                       if (success) {

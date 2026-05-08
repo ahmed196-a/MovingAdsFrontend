@@ -64,13 +64,29 @@ class RequestApiService {
       return [];
     }
   }
+  static Future<List<Request>> getSentRequests(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/sent/$userId"),
+      );
+
+      if (response.statusCode == 200) {
+        List data = jsonDecode(response.body);
+        return data.map((e) => Request.fromMap(e)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
 
   static Future<bool> updateRequestStatus({
     required int reqId,
     required int requestedTo,
     required String status,
     required int adId,
-    required String vehReg,
+    required int agencyId,
   }) async {
     try {
       final response = await http.put(
@@ -83,7 +99,7 @@ class RequestApiService {
           "RequestedTo": requestedTo,
           "Status": status,
           "AdId": adId,
-          "VehReg": vehReg,
+          "AgencyId": agencyId,
         }),
       );
 

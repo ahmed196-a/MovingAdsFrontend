@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import '../../models/Ad.dart';
 import '../../models/adAssignment.dart';
 import '../../services/AdApiService.dart';
-import 'adBillingScreen.dart';
-import 'setBillingRateScreen.dart';
 
 class AdDetailsScreen extends StatefulWidget {
   final int adId;
@@ -272,181 +270,141 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 ),
 
                 const SizedBox(height: 25),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => SetBillingRateScreen(
-                              adId: widget.adId,
-                              adTitle: ad.adTitle,
-                            ),
-                          ));
-                        },
-                        icon: const Icon(Icons.attach_money),
-                        label: const Text("Set Rate"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => AdBillingScreen(
-                              adId: widget.adId,
-                              adTitle: ad.adTitle,
-                            ),
-                          ));
-                        },
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text("Billing"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff18B6A3),
-                          foregroundColor: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
 
 
-                const Text(
-                  "Assigned Drivers",
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                // const Text(
+                //   "Assigned Drivers",
+                //   style:
+                //   TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                // ),
 
-                const SizedBox(height: 12),
+                // const SizedBox(height: 12),
 
                 // ================= DRIVERS SECTION =================
 
-                if (ad.status.toLowerCase() == "inactive")
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        "Ad is inactive. No drivers assigned.",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  FutureBuilder<List<AdAssignment>>(
-                    future: driversFuture,
-                    builder: (context, driverSnapshot) {
-                      if (driverSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
-                      }
-
-                      if (!driverSnapshot.hasData ||
-                          driverSnapshot.data!.isEmpty) {
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              "No drivers assigned yet.",
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final drivers = driverSnapshot.data!;
-
-                      return Column(
-                        children: drivers.map((driver) {
-                          return Container(
-                            margin:
-                            const EdgeInsets.only(bottom: 14),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius:
-                              BorderRadius.circular(12),
-                              boxShadow: const [
-                                BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4)
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-
-                                Row(
-                                  children: [
-                                    const CircleAvatar(
-                                      radius: 28,
-                                      backgroundImage:
-                                      AssetImage(
-                                          "assets/profile.png"),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            driver.driverName,
-                                            style: const TextStyle(
-                                                fontWeight:
-                                                FontWeight.bold),
-                                          ),
-                                          Text(
-                                            "${driver.vehicleModel} (${driver.vehicleReg})",
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                // TRACK BUTTON ALWAYS
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              TrackDriverScreen(
-                                                assignment: driver,
-                                                adId: widget.adId,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                    ),
-                                    child:
-                                    const Text("Track Driver"),
-                                  ),
-                                )
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
+                // if (ad.status.toLowerCase() == "inactive")
+                //   Container(
+                //     padding: const EdgeInsets.all(16),
+                //     decoration: BoxDecoration(
+                //       color: Colors.white,
+                //       borderRadius: BorderRadius.circular(12),
+                //     ),
+                //     child: const Center(
+                //       child: Text(
+                //         "Ad is inactive. No drivers assigned.",
+                //         style: TextStyle(color: Colors.grey),
+                //       ),
+                //     ),
+                //   )
+                // else
+                //   FutureBuilder<List<AdAssignment>>(
+                //     future: driversFuture,
+                //     builder: (context, driverSnapshot) {
+                //       if (driverSnapshot.connectionState ==
+                //           ConnectionState.waiting) {
+                //         return const Center(
+                //             child: CircularProgressIndicator());
+                //       }
+                //
+                //       if (!driverSnapshot.hasData ||
+                //           driverSnapshot.data!.isEmpty) {
+                //         return Container(
+                //           padding: const EdgeInsets.all(16),
+                //           decoration: BoxDecoration(
+                //             color: Colors.white,
+                //             borderRadius: BorderRadius.circular(12),
+                //           ),
+                //           child: const Center(
+                //             child: Text(
+                //               "No drivers assigned yet.",
+                //               style: TextStyle(color: Colors.grey),
+                //             ),
+                //           ),
+                //         );
+                //       }
+                //
+                //       final drivers = driverSnapshot.data!;
+                //
+                //       return Column(
+                //         children: drivers.map((driver) {
+                //           return Container(
+                //             margin:
+                //             const EdgeInsets.only(bottom: 14),
+                //             padding: const EdgeInsets.all(16),
+                //             decoration: BoxDecoration(
+                //               color: Colors.white,
+                //               borderRadius:
+                //               BorderRadius.circular(12),
+                //               boxShadow: const [
+                //                 BoxShadow(
+                //                     color: Colors.black12,
+                //                     blurRadius: 4)
+                //               ],
+                //             ),
+                //             child: Column(
+                //               children: [
+                //
+                //                 Row(
+                //                   children: [
+                //                     const CircleAvatar(
+                //                       radius: 28,
+                //                       backgroundImage:
+                //                       AssetImage(
+                //                           "assets/profile.png"),
+                //                     ),
+                //                     const SizedBox(width: 12),
+                //                     Expanded(
+                //                       child: Column(
+                //                         crossAxisAlignment:
+                //                         CrossAxisAlignment.start,
+                //                         children: [
+                //                           Text(
+                //                             driver.driverName,
+                //                             style: const TextStyle(
+                //                                 fontWeight:
+                //                                 FontWeight.bold),
+                //                           ),
+                //                           Text(
+                //                             "${driver.vehicleModel} (${driver.vehicleReg})",
+                //                           ),
+                //                         ],
+                //                       ),
+                //                     ),
+                //                   ],
+                //                 ),
+                //
+                //                 const SizedBox(height: 12),
+                //
+                //                 // TRACK BUTTON ALWAYS
+                //                 SizedBox(
+                //                   width: double.infinity,
+                //                   child: ElevatedButton(
+                //                     onPressed: () {
+                //                       Navigator.push(
+                //                         context,
+                //                         MaterialPageRoute(
+                //                           builder: (_) =>
+                //                               TrackDriverScreen(
+                //                                 assignment: driver,
+                //                                 adId: widget.adId,
+                //                               ),
+                //                         ),
+                //                       );
+                //                     },
+                //                     style: ElevatedButton.styleFrom(
+                //                       backgroundColor: Colors.green,
+                //                     ),
+                //                     child:
+                //                     const Text("Track Driver"),
+                //                   ),
+                //                 )
+                //               ],
+                //             ),
+                //           );
+                //         }).toList(),
+                //       );
+                //     },
+                //   ),
               ],
             ),
           );

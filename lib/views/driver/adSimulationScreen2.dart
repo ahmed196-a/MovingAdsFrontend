@@ -23,23 +23,33 @@
 //   });
 // }
 //
-// class AdSimulationScreen extends StatefulWidget {
-//   const AdSimulationScreen({super.key});
+// class AdSimulationScreen2 extends StatefulWidget {
+//   const AdSimulationScreen2({super.key});
 //
 //   @override
-//   State<AdSimulationScreen> createState() => _AdSimulationScreenState();
+//   State<AdSimulationScreen2> createState() => _AdSimulationScreen2State();
 // }
 //
-// class _AdSimulationScreenState extends State<AdSimulationScreen>
+// class _AdSimulationScreen2State extends State<AdSimulationScreen2>
 //     with TickerProviderStateMixin {
 //
 //   GoogleMapController? _mapController;
 //
-//   // ───────── STATE ─────────
-//   bool _isLoading = true;
+//   // ───────── PHASE STATE ─────────
+//   // Phase 1: loading vehicle regs
+//   // Phase 2: user picks a vehicle
+//   // Phase 3: simulation ready / running
+//   bool _isLoadingVehicles = true;
+//   bool _isLoadingSimulation = false;
 //   String? _errorMessage;
+//
+//   List<String> _vehicleRegs = [];        // all distinct regs from assigned drivers
+//   String? _selectedVehicleReg;           // what user picked in dropdown
+//
+//   // ───────── SIMULATION STATE ─────────
 //   bool _isRunning = false;
 //   bool _inOverlapZone = false;
+//   bool _simulationReady = false;         // true once per-vehicle data loaded
 //
 //   List<LatLng> _route = [];
 //   int _currentStep = 0;
@@ -56,9 +66,7 @@
 //   Map<int, List<LatLng>> _adFenceMap = {};
 //   List<LatLng> _vehicleFence = [];
 //   List<int> _activeRotationAds = [];
-//   String _vehicleReg = "";
 //
-//   // ── Changed to 3 seconds ──
 //   int _secondsLeft = 3;
 //   static const int _rotationSeconds = 3;
 //
@@ -80,7 +88,7 @@
 //       end: Offset.zero,
 //     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 //
-//     _loadCarIcon().then((_) => _loadData());
+//     _loadCarIcon().then((_) => _loadVehicleRegs());
 //   }
 //
 //   @override
@@ -93,21 +101,12 @@
 //   }
 //
 //   // ───────── CAR ICON ─────────
-//   // Draws a car emoji / SVG-style icon as a BitmapDescriptor
 //   Future<void> _loadCarIcon() async {
 //     try {
-//       // Try to load from assets first (add assets/icons/car.png to pubspec if you have one)
-//       // _carIcon = await BitmapDescriptor.fromAssetImage(
-//       //   const ImageConfiguration(size: Size(48, 48)),
-//       //   'assets/icons/car.png',
-//       // );
-//
-//       // Fallback: draw a custom car shape programmatically
 //       final ui.PictureRecorder recorder = ui.PictureRecorder();
 //       final Canvas canvas = Canvas(recorder);
 //       const double size = 80;
 //
-//       // Shadow
 //       final shadowPaint = Paint()
 //         ..color = Colors.black.withOpacity(0.25)
 //         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
@@ -119,7 +118,6 @@
 //         shadowPaint,
 //       );
 //
-//       // Car body
 //       final bodyPaint = Paint()..color = const Color(0xff18B6A3);
 //       canvas.drawRRect(
 //         RRect.fromRectAndRadius(
@@ -129,7 +127,6 @@
 //         bodyPaint,
 //       );
 //
-//       // Roof / cabin
 //       final roofPaint = Paint()..color = const Color(0xff0d8c7c);
 //       canvas.drawRRect(
 //         RRect.fromRectAndRadius(
@@ -139,7 +136,6 @@
 //         roofPaint,
 //       );
 //
-//       // Windshield
 //       final glassPaint = Paint()..color = Colors.white.withOpacity(0.85);
 //       canvas.drawRRect(
 //         RRect.fromRectAndRadius(
@@ -149,19 +145,14 @@
 //         glassPaint,
 //       );
 //
-//       // Wheels
 //       final wheelPaint = Paint()..color = const Color(0xff1a1a2e);
-//       // front-left
 //       canvas.drawCircle(const Offset(16, size - 10), 9, wheelPaint);
-//       // front-right
 //       canvas.drawCircle(Offset(size - 16, size - 10), 9, wheelPaint);
 //
-//       // Wheel rims
 //       final rimPaint = Paint()..color = Colors.white54;
 //       canvas.drawCircle(const Offset(16, size - 10), 4, rimPaint);
 //       canvas.drawCircle(Offset(size - 16, size - 10), 4, rimPaint);
 //
-//       // Headlights
 //       final lightPaint = Paint()..color = Colors.yellow[200]!;
 //       canvas.drawRRect(
 //         RRect.fromRectAndRadius(
@@ -188,11 +179,10 @@
 //       }
 //     } catch (e) {
 //       debugPrint("Car icon error: $e");
-//       // Falls back to default marker if icon fails
 //     }
 //   }
 //
-//   // ───────── SAFE INT PARSE ─────────
+//   // ───────── HELPERS ─────────
 //   int _toInt(dynamic value) {
 //     if (value == null) return 0;
 //     if (value is int) return value;
@@ -201,7 +191,6 @@
 //     return 0;
 //   }
 //
-//   // ───────── PARSE POLYGON ─────────
 //   List<LatLng> _parsePolygon(dynamic raw) {
 //     try {
 //       List data;
@@ -210,7 +199,6 @@
 //       } else if (raw is List) {
 //         data = raw;
 //       } else {
-//         debugPrint("Unknown polygon format: ${raw.runtimeType}");
 //         return [];
 //       }
 //
@@ -235,7 +223,6 @@
 //         }).toList();
 //       }
 //
-//       debugPrint("Unrecognized polygon element: ${data.first.runtimeType}");
 //       return [];
 //     } catch (e) {
 //       debugPrint("Polygon parse error: $e  raw=$raw");
@@ -243,7 +230,6 @@
 //     }
 //   }
 //
-//   // ───────── CENTROID ─────────
 //   LatLng _centroid(List<LatLng> polygon) {
 //     double lat = 0, lng = 0;
 //     for (final p in polygon) {
@@ -253,54 +239,14 @@
 //     return LatLng(lat / polygon.length, lng / polygon.length);
 //   }
 //
-//   // ───────── BUILD ROUTE ─────────
-//   // List<LatLng> _buildRoute(
-//   //     List<LatLng> vehicleFence, Map<int, List<LatLng>> adFenceMap) {
-//   //   final List<LatLng> points = [];
-//   //
-//   //   if (vehicleFence.isNotEmpty) {
-//   //     points.add(_centroid(vehicleFence));
-//   //   }
-//   //
-//   //   for (final poly in adFenceMap.values) {
-//   //     if (poly.isNotEmpty) {
-//   //       final center = _centroid(poly);
-//   //       if (points.isNotEmpty) {
-//   //         final prev = points.last;
-//   //         points.add(LatLng(
-//   //           prev.latitude + (center.latitude - prev.latitude) / 3,
-//   //           prev.longitude + (center.longitude - prev.longitude) / 3,
-//   //         ));
-//   //         points.add(LatLng(
-//   //           prev.latitude + 2 * (center.latitude - prev.latitude) / 3,
-//   //           prev.longitude + 2 * (center.longitude - prev.longitude) / 3,
-//   //         ));
-//   //       }
-//   //       points.add(center);
-//   //     }
-//   //   }
-//   //
-//   //   if (points.length >= 2) {
-//   //     final last = points.last;
-//   //     final secondLast = points[points.length - 2];
-//   //     points.add(LatLng(
-//   //       last.latitude + (last.latitude - secondLast.latitude),
-//   //       last.longitude + (last.longitude - secondLast.longitude),
-//   //     ));
-//   //   }
-//   //
-//   //   return points;
-//   // }
 //   List<LatLng> _buildRoute(
 //       List<LatLng> vehicleFence, Map<int, List<LatLng>> adFenceMap) {
 //     final List<LatLng> points = [];
 //
-//     // ── Start: first point of vehicle fence ──
 //     if (vehicleFence.isNotEmpty) {
-//       points.add(vehicleFence.first);
+//       points.add(_centroid(vehicleFence));
 //     }
 //
-//     // ── Pass through centroid of each ad fence ──
 //     for (final poly in adFenceMap.values) {
 //       if (poly.isNotEmpty) {
 //         final center = _centroid(poly);
@@ -319,15 +265,21 @@
 //       }
 //     }
 //
-//     // ── End: last point of vehicle fence ──
-//     if (vehicleFence.length > 1) {
-//       points.add(vehicleFence.last);
+//     if (points.length >= 2) {
+//       final last = points.last;
+//       final secondLast = points[points.length - 2];
+//       points.add(LatLng(
+//         last.latitude + (last.latitude - secondLast.latitude),
+//         last.longitude + (last.longitude - secondLast.longitude),
+//       ));
 //     }
 //
 //     return points;
 //   }
-//   // ───────── LOAD DATA ─────────
-//   Future<void> _loadData() async {
+//
+//   // ───────── PHASE 1: LOAD VEHICLE REGS ─────────
+//   // Fetches all active ads → collects distinct vehicle regs from assignments
+//   Future<void> _loadVehicleRegs() async {
 //     try {
 //       final allAds = await AdApiService.fetchAds();
 //       final activeAds =
@@ -336,71 +288,109 @@
 //       if (activeAds.isEmpty) {
 //         setState(() {
 //           _errorMessage = "No active ads found.";
-//           _isLoading = false;
+//           _isLoadingVehicles = false;
 //         });
 //         return;
 //       }
 //
-//       debugPrint("Active ads: ${activeAds.map((a) => a.adId).toList()}");
-//
-//       final Set<String> distinctVehicleRegs = {};
+//       final Set<String> regs = {};
 //       for (final ad in activeAds) {
 //         try {
-//           final adId = _toInt(ad.adId);
-//           final assignments = await AdApiService.getAssignedDrivers(adId);
+//           final assignments =
+//           await AdApiService.getAssignedDrivers(_toInt(ad.adId));
 //           for (final a in assignments) {
 //             final reg = a.vehicleReg?.trim() ?? '';
-//             if (reg.isNotEmpty) distinctVehicleRegs.add(reg);
+//             if (reg.isNotEmpty) regs.add(reg);
 //           }
 //         } catch (e) {
 //           debugPrint("Assignments error for adId=${ad.adId}: $e");
 //         }
 //       }
 //
-//       if (distinctVehicleRegs.isEmpty) {
+//       if (regs.isEmpty) {
 //         setState(() {
 //           _errorMessage = "No vehicles assigned to active ads.";
-//           _isLoading = false;
+//           _isLoadingVehicles = false;
 //         });
 //         return;
 //       }
 //
-//       final vehicleReg = distinctVehicleRegs.first;
-//       debugPrint("Using vehicleReg: $vehicleReg");
+//       setState(() {
+//         _vehicleRegs = regs.toList()..sort();
+//         _isLoadingVehicles = false;
+//       });
+//     } catch (e) {
+//       setState(() {
+//         _errorMessage = "Failed to load vehicles: $e";
+//         _isLoadingVehicles = false;
+//       });
+//     }
+//   }
 //
-//       // ── Fetch vehicle fence with detailed logging ──
+//   // ───────── PHASE 2: LOAD SIMULATION FOR SELECTED VEHICLE ─────────
+//   Future<void> _loadSimulationForVehicle(String vehicleReg) async {
+//     // Stop any running simulation first
+//     _stopSimulation();
+//     setState(() {
+//       _isLoadingSimulation = true;
+//       _simulationReady = false;
+//       _errorMessage = null;
+//       _adQueue = [];
+//       _adFenceMap = {};
+//       _vehicleFence = [];
+//       _route = [];
+//       _currentStep = 0;
+//     });
+//
+//     try {
+//       final allAds = await AdApiService.fetchAds();
+//       final activeAds =
+//       allAds.where((a) => a.status.toLowerCase() == 'active').toList();
+//
+//       // ── Keep only ads that have this vehicle assigned ──
+//       final List<dynamic> adsForVehicle = [];
+//       for (final ad in activeAds) {
+//         try {
+//           final assignments =
+//           await AdApiService.getAssignedDrivers(_toInt(ad.adId));
+//           final hasVehicle = assignments
+//               .any((a) => (a.vehicleReg?.trim() ?? '') == vehicleReg);
+//           if (hasVehicle) adsForVehicle.add(ad);
+//         } catch (e) {
+//           debugPrint("Assignment check error: $e");
+//         }
+//       }
+//
+//       if (adsForVehicle.isEmpty) {
+//         setState(() {
+//           _errorMessage = "No active ads assigned to $vehicleReg.";
+//           _isLoadingSimulation = false;
+//         });
+//         return;
+//       }
+//
+//       // ── Vehicle fence ──
 //       List<LatLng> vehicleFence = [];
 //       try {
 //         final vehFences =
 //         await VehFenceApiService.getFenceByVehicle(vehicleReg);
-//         debugPrint("VehFences count: ${vehFences.length}");
 //         if (vehFences.isNotEmpty) {
-//           debugPrint(
-//               "VehFence[0] polygon raw: ${vehFences.first.polygon}");
 //           vehicleFence = _parsePolygon(vehFences.first.polygon);
-//           debugPrint("Vehicle fence points: ${vehicleFence.length}");
-//         } else {
-//           debugPrint("No vehicle fences returned for $vehicleReg");
 //         }
 //       } catch (e) {
 //         debugPrint("Vehicle fence error for $vehicleReg: $e");
 //       }
 //
-//       // ── Fetch ad fences ──
+//       // ── Ad fences ──
 //       final Map<int, List<LatLng>> adFenceMap = {};
 //       final List<_QueuedAd> queue = [];
 //
-//       for (final ad in activeAds) {
+//       for (final ad in adsForVehicle) {
 //         try {
 //           final adId = _toInt(ad.adId);
-//           debugPrint("Fetching fence for adId=$adId");
 //           final fences = await AdFenceApiService.getFenceByAd(adId);
-//           debugPrint("  → fences count: ${fences.length}");
-//
 //           if (fences.isNotEmpty) {
-//             debugPrint("  → polygon raw: ${fences.first.polygon}");
 //             final polygon = _parsePolygon(fences.first.polygon);
-//             debugPrint("  → polygon points: ${polygon.length}");
 //             if (polygon.isNotEmpty) {
 //               adFenceMap[adId] = polygon;
 //               queue.add(_QueuedAd(
@@ -417,19 +407,18 @@
 //
 //       if (adFenceMap.isEmpty) {
 //         setState(() {
-//           _errorMessage = "No ad fences found for active ads.";
-//           _isLoading = false;
+//           _errorMessage = "No ad fences found for ads assigned to $vehicleReg.";
+//           _isLoadingSimulation = false;
 //         });
 //         return;
 //       }
 //
 //       final route = _buildRoute(vehicleFence, adFenceMap);
-//       debugPrint("Route length: ${route.length}");
 //
 //       if (route.length < 2) {
 //         setState(() {
 //           _errorMessage = "Could not build a valid route from fence data.";
-//           _isLoading = false;
+//           _isLoadingSimulation = false;
 //         });
 //         return;
 //       }
@@ -438,16 +427,20 @@
 //         _adQueue = queue;
 //         _adFenceMap = adFenceMap;
 //         _vehicleFence = vehicleFence;
-//         _vehicleReg = vehicleReg;
 //         _route = route;
 //         _currentStep = 0;
-//         _isLoading = false;
+//         _currentAdIndex = 0;
+//         _isLoadingSimulation = false;
+//         _simulationReady = true;
 //       });
+//
+//       // Move camera to start position
+//       _mapController?.animateCamera(
+//           CameraUpdate.newLatLngZoom(_carPosition, 14));
 //     } catch (e) {
-//       debugPrint("_loadData ERROR: $e");
 //       setState(() {
-//         _errorMessage = "Failed to load data: $e";
-//         _isLoading = false;
+//         _errorMessage = "Failed to load simulation: $e";
+//         _isLoadingSimulation = false;
 //       });
 //     }
 //   }
@@ -523,7 +516,7 @@
 //     }
 //   }
 //
-//   // ───────── ROTATION (3 seconds) ─────────
+//   // ───────── ROTATION ─────────
 //   void _startAdRotation(List<int> adIds) {
 //     _activeRotationAds = List.from(adIds);
 //     _stopAdRotation();
@@ -571,13 +564,12 @@
 //     Marker(
 //       markerId: const MarkerId("car"),
 //       position: _carPosition,
-//       // Use custom car icon; fallback to azure default if not loaded
 //       icon: _carIcon ??
 //           BitmapDescriptor.defaultMarkerWithHue(
 //               BitmapDescriptor.hueAzure),
 //       anchor: const Offset(0.5, 0.5),
 //       infoWindow: InfoWindow(
-//         title: _vehicleReg,
+//         title: _selectedVehicleReg ?? "",
 //         snippet: _inOverlapZone ? "In overlap zone" : "Driving",
 //       ),
 //     ),
@@ -606,7 +598,6 @@
 //   Set<Polygon> _buildPolygons() {
 //     final Set<Polygon> polygons = {};
 //
-//     // ── Vehicle fence — green ──
 //     if (_vehicleFence.isNotEmpty) {
 //       polygons.add(Polygon(
 //         polygonId: const PolygonId("vehicle"),
@@ -615,12 +606,8 @@
 //         strokeWidth: 3,
 //         fillColor: Colors.green.withOpacity(0.15),
 //       ));
-//     } else {
-//       debugPrint(
-//           "⚠️ _vehicleFence is empty — vehicle fence polygon will not be drawn");
 //     }
 //
-//     // ── Ad fences ──
 //     final colors = [Colors.blue, Colors.orange, Colors.purple, Colors.red];
 //     int idx = 0;
 //     _adFenceMap.forEach((id, poly) {
@@ -651,7 +638,6 @@
 //         crossAxisAlignment: CrossAxisAlignment.start,
 //         mainAxisSize: MainAxisSize.min,
 //         children: [
-//           // Always show vehicle fence in legend, greyed if not loaded
 //           _legendRow(
 //             Colors.green,
 //             "Vehicle Fence${_vehicleFence.isEmpty ? ' (not loaded)' : ''}",
@@ -688,11 +674,66 @@
 //     ],
 //   );
 //
+//   // ───────── VEHICLE DROPDOWN PANEL ─────────
+//   Widget _buildVehicleDropdown() {
+//     return Container(
+//       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(14),
+//         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+//       ),
+//       child: Row(
+//         children: [
+//           const Icon(Icons.directions_car, color: Color(0xff18B6A3), size: 22),
+//           const SizedBox(width: 10),
+//           Expanded(
+//             child: DropdownButtonHideUnderline(
+//               child: DropdownButton<String>(
+//                 value: _selectedVehicleReg,
+//                 hint: const Text(
+//                   "Select a vehicle to simulate",
+//                   style: TextStyle(fontSize: 13, color: Colors.black54),
+//                 ),
+//                 isExpanded: true,
+//                 icon: const Icon(Icons.keyboard_arrow_down,
+//                     color: Color(0xff18B6A3)),
+//                 items: _vehicleRegs
+//                     .map((reg) => DropdownMenuItem(
+//                   value: reg,
+//                   child: Text(reg,
+//                       style: const TextStyle(
+//                           fontSize: 14, fontWeight: FontWeight.w600)),
+//                 ))
+//                     .toList(),
+//                 onChanged: _isLoadingSimulation
+//                     ? null
+//                     : (value) {
+//                   if (value == null) return;
+//                   setState(() => _selectedVehicleReg = value);
+//                   _loadSimulationForVehicle(value);
+//                 },
+//               ),
+//             ),
+//           ),
+//           if (_isLoadingSimulation) ...[
+//             const SizedBox(width: 10),
+//             const SizedBox(
+//               width: 18,
+//               height: 18,
+//               child: CircularProgressIndicator(
+//                   strokeWidth: 2, color: Color(0xff18B6A3)),
+//             ),
+//           ],
+//         ],
+//       ),
+//     );
+//   }
+//
 //   // ───────── BOTTOM PANEL ─────────
 //   Widget _buildBottomPanel() {
-//     // ── Normal driving panel (no overlap) ──
 //     if (!_inOverlapZone || _adQueue.isEmpty) {
-//       // Show current ad image even outside overlap if we know which ad is active
 //       final bool hasActiveAd = _adQueue.isNotEmpty &&
 //           _currentAdIndex >= 0 &&
 //           _currentAdIndex < _adQueue.length;
@@ -707,7 +748,6 @@
 //         child: Column(
 //           mainAxisSize: MainAxisSize.min,
 //           children: [
-//             // ── Vehicle status row ──
 //             Padding(
 //               padding: const EdgeInsets.all(14),
 //               child: Row(
@@ -721,7 +761,7 @@
 //                       mainAxisSize: MainAxisSize.min,
 //                       children: [
 //                         Text(
-//                           _vehicleReg.isNotEmpty ? _vehicleReg : "Vehicle",
+//                           _selectedVehicleReg ?? "Vehicle",
 //                           style: const TextStyle(
 //                               fontWeight: FontWeight.bold, fontSize: 15),
 //                         ),
@@ -757,7 +797,6 @@
 //                 ],
 //               ),
 //             ),
-//             // ── Ad image preview box ──
 //             if (hasActiveAd) ...[
 //               const Divider(height: 1),
 //               _buildAdImageBox(_adQueue[_currentAdIndex], isOverlap: false),
@@ -767,7 +806,6 @@
 //       );
 //     }
 //
-//     // ── Overlap zone panel ──
 //     final currentAd = _adQueue[_currentAdIndex];
 //     final queueLength = _adQueue.length;
 //
@@ -778,16 +816,13 @@
 //         decoration: BoxDecoration(
 //           color: Colors.white,
 //           borderRadius: BorderRadius.circular(16),
-//           boxShadow: const [
-//             BoxShadow(color: Colors.black26, blurRadius: 8)
-//           ],
+//           boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
 //           border: Border.all(
 //               color: const Color(0xff18B6A3).withOpacity(0.5), width: 1.5),
 //         ),
 //         child: Column(
 //           mainAxisSize: MainAxisSize.min,
 //           children: [
-//             // Header
 //             Container(
 //               width: double.infinity,
 //               padding:
@@ -819,11 +854,7 @@
 //                 ],
 //               ),
 //             ),
-//
-//             // ── Ad image box (large) + info ──
 //             _buildAdImageBox(currentAd, isOverlap: true),
-//
-//             // Queue dots
 //             if (queueLength > 1)
 //               Padding(
 //                 padding: const EdgeInsets.only(bottom: 10),
@@ -845,8 +876,6 @@
 //                   }),
 //                 ),
 //               ),
-//
-//             // Progress bar
 //             Padding(
 //               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
 //               child: ClipRRect(
@@ -866,21 +895,20 @@
 //   }
 //
 //   // ───────── AD IMAGE BOX ─────────
-//   // Reusable widget that displays the ad media image from Cloudinary URL
 //   Widget _buildAdImageBox(_QueuedAd ad, {required bool isOverlap}) {
 //     return Padding(
 //       padding: const EdgeInsets.all(12),
 //       child: Row(
 //         crossAxisAlignment: CrossAxisAlignment.start,
 //         children: [
-//           // ── Image box ──
 //           Container(
 //             width: isOverlap ? 90 : 72,
 //             height: isOverlap ? 90 : 72,
 //             decoration: BoxDecoration(
 //               borderRadius: BorderRadius.circular(12),
 //               border: Border.all(
-//                   color: const Color(0xff18B6A3).withOpacity(0.4), width: 1.5),
+//                   color: const Color(0xff18B6A3).withOpacity(0.4),
+//                   width: 1.5),
 //               color: Colors.grey[100],
 //             ),
 //             child: ClipRRect(
@@ -927,7 +955,6 @@
 //             ),
 //           ),
 //           const SizedBox(width: 12),
-//           // ── Ad info ──
 //           Expanded(
 //             child: Column(
 //               crossAxisAlignment: CrossAxisAlignment.start,
@@ -948,7 +975,6 @@
 //                   overflow: TextOverflow.ellipsis,
 //                 ),
 //                 const SizedBox(height: 4),
-//                 // URL preview
 //                 Text(
 //                   ad.mediaPath.isNotEmpty ? ad.mediaPath : "No media URL",
 //                   style: TextStyle(fontSize: 10, color: Colors.grey[400]),
@@ -981,12 +1007,15 @@
 //   // ───────── BUILD ─────────
 //   @override
 //   Widget build(BuildContext context) {
-//     if (_isLoading) {
+//     // ── Phase 1: loading vehicle list ──
+//     if (_isLoadingVehicles) {
 //       return const Scaffold(
-//           body: Center(child: CircularProgressIndicator()));
+//         body: Center(child: CircularProgressIndicator()),
+//       );
 //     }
 //
-//     if (_errorMessage != null) {
+//     // ── Error with no vehicles ──
+//     if (_errorMessage != null && _vehicleRegs.isEmpty) {
 //       return Scaffold(
 //         appBar: AppBar(
 //           backgroundColor: const Color(0xff18B6A3),
@@ -1007,9 +1036,9 @@
 //                 const SizedBox(height: 24),
 //                 ElevatedButton(
 //                   onPressed: () => setState(() {
-//                     _isLoading = true;
+//                     _isLoadingVehicles = true;
 //                     _errorMessage = null;
-//                     _loadData();
+//                     _loadVehicleRegs();
 //                   }),
 //                   child: const Text("Retry"),
 //                 ),
@@ -1027,71 +1056,140 @@
 //         title: const Text("Ad Simulation",
 //             style: TextStyle(color: Colors.black)),
 //         actions: [
-//           Padding(
-//             padding: const EdgeInsets.only(right: 14),
-//             child: Center(
-//               child: Container(
-//                 padding:
-//                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-//                 decoration: BoxDecoration(
-//                   color: _inOverlapZone ? Colors.red : Colors.green,
-//                   borderRadius: BorderRadius.circular(20),
-//                 ),
-//                 child: Text(
-//                   _inOverlapZone ? "OVERLAP ZONE" : "Single Zone",
-//                   style: const TextStyle(
-//                       color: Colors.white,
-//                       fontSize: 11,
-//                       fontWeight: FontWeight.bold),
+//           if (_simulationReady)
+//             Padding(
+//               padding: const EdgeInsets.only(right: 14),
+//               child: Center(
+//                 child: Container(
+//                   padding:
+//                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+//                   decoration: BoxDecoration(
+//                     color: _inOverlapZone ? Colors.red : Colors.green,
+//                     borderRadius: BorderRadius.circular(20),
+//                   ),
+//                   child: Text(
+//                     _inOverlapZone ? "OVERLAP ZONE" : "Single Zone",
+//                     style: const TextStyle(
+//                         color: Colors.white,
+//                         fontSize: 11,
+//                         fontWeight: FontWeight.bold),
+//                   ),
 //                 ),
 //               ),
 //             ),
-//           ),
 //         ],
 //       ),
-//       body: Stack(
+//       body: Column(
 //         children: [
-//           GoogleMap(
-//             initialCameraPosition:
-//             CameraPosition(target: _carPosition, zoom: 14),
-//             onMapCreated: (ctrl) => _mapController = ctrl,
-//             markers: _buildMarkers(),
-//             polylines: _buildPolylines(),
-//             polygons: _buildPolygons(),
-//             myLocationEnabled: false,
-//             zoomControlsEnabled: true,
-//           ),
-//           Positioned(top: 12, left: 12, child: _buildLegend()),
-//           Positioned(
-//             top: 12,
-//             right: 12,
-//             child: Column(
-//               children: [
-//                 ElevatedButton.icon(
-//                   onPressed: _isRunning ? null : _startSimulation,
-//                   icon: const Icon(Icons.play_arrow),
-//                   label: const Text("Start"),
-//                   style: ElevatedButton.styleFrom(
-//                       backgroundColor: const Color(0xff18B6A3),
-//                       foregroundColor: Colors.white),
+//           // ── Vehicle picker ──
+//           _buildVehicleDropdown(),
+//
+//           // ── Error for simulation load ──
+//           if (_errorMessage != null && _selectedVehicleReg != null)
+//             Padding(
+//               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+//               child: Container(
+//                 padding: const EdgeInsets.all(10),
+//                 decoration: BoxDecoration(
+//                   color: Colors.red.shade50,
+//                   borderRadius: BorderRadius.circular(10),
+//                   border: Border.all(color: Colors.red.shade200),
 //                 ),
-//                 const SizedBox(height: 8),
-//                 ElevatedButton.icon(
-//                   onPressed: _isRunning ? _stopSimulation : null,
-//                   icon: const Icon(Icons.stop),
-//                   label: const Text("Stop"),
-//                   style: ElevatedButton.styleFrom(
-//                       backgroundColor: Colors.red,
-//                       foregroundColor: Colors.white),
+//                 child: Row(
+//                   children: [
+//                     const Icon(Icons.error_outline,
+//                         color: Colors.red, size: 18),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: Text(_errorMessage!,
+//                           style: const TextStyle(
+//                               fontSize: 12, color: Colors.red)),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//
+//           // ── Map + controls ──
+//           Expanded(
+//             child: _simulationReady
+//                 ? Stack(
+//               children: [
+//                 GoogleMap(
+//                   initialCameraPosition: CameraPosition(
+//                       target: _carPosition, zoom: 14),
+//                   onMapCreated: (ctrl) => _mapController = ctrl,
+//                   markers: _buildMarkers(),
+//                   polylines: _buildPolylines(),
+//                   polygons: _buildPolygons(),
+//                   myLocationEnabled: false,
+//                   zoomControlsEnabled: true,
+//                 ),
+//                 Positioned(
+//                     top: 12, left: 12, child: _buildLegend()),
+//                 Positioned(
+//                   top: 12,
+//                   right: 12,
+//                   child: Column(
+//                     children: [
+//                       ElevatedButton.icon(
+//                         onPressed:
+//                         _isRunning ? null : _startSimulation,
+//                         icon: const Icon(Icons.play_arrow),
+//                         label: const Text("Start"),
+//                         style: ElevatedButton.styleFrom(
+//                             backgroundColor:
+//                             const Color(0xff18B6A3),
+//                             foregroundColor: Colors.white),
+//                       ),
+//                       const SizedBox(height: 8),
+//                       ElevatedButton.icon(
+//                         onPressed:
+//                         _isRunning ? _stopSimulation : null,
+//                         icon: const Icon(Icons.stop),
+//                         label: const Text("Stop"),
+//                         style: ElevatedButton.styleFrom(
+//                             backgroundColor: Colors.red,
+//                             foregroundColor: Colors.white),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//                 Positioned(
+//                   bottom: 0,
+//                   left: 0,
+//                   right: 0,
+//                   child: _buildBottomPanel(),
 //                 ),
 //               ],
+//             )
+//                 : Center(
+//               child: _isLoadingSimulation
+//                   ? const Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 children: [
+//                   CircularProgressIndicator(
+//                       color: Color(0xff18B6A3)),
+//                   SizedBox(height: 14),
+//                   Text("Loading simulation…",
+//                       style: TextStyle(color: Colors.black54)),
+//                 ],
+//               )
+//                   : const Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 children: [
+//                   Icon(Icons.directions_car,
+//                       size: 64, color: Colors.black12),
+//                   SizedBox(height: 12),
+//                   Text(
+//                     "Select a vehicle above\nto start the simulation",
+//                     textAlign: TextAlign.center,
+//                     style: TextStyle(
+//                         color: Colors.black38, fontSize: 15),
+//                   ),
+//                 ],
+//               ),
 //             ),
-//           ),
-//           Positioned(
-//             bottom: 0,
-//             left: 0,
-//             right: 0,
-//             child: _buildBottomPanel(),
 //           ),
 //         ],
 //       ),

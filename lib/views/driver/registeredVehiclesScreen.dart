@@ -113,7 +113,7 @@ class _RegisteredVehiclesScreenState
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Image.network(
-                            vehicle.MediaPath,
+                            vehicle.mediaPath,
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
@@ -166,10 +166,10 @@ class _RegisteredVehiclesScreenState
                       ),
 
                       // 🗑 Delete Icon (UI Only)
-                      const Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                      ),
+                      // const Icon(
+                      //   Icons.delete,
+                      //   color: Colors.red,
+                      // ),
                       IconButton(
                         icon: Icon(
                           Icons.schedule,

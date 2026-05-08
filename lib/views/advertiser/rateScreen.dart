@@ -37,7 +37,7 @@ class _RateDriverScreenState extends State<RateDriverScreen> {
 
     final model = Rating(
       ratedBy: widget.currentUserId,
-      ratedTo: widget.assignment.driverId,
+      ratedTo: widget.assignment.assignId,
       ratePoints: _rating.toDouble(),
       adId: widget.adId,
       assignId: widget.assignment.assignId,
@@ -108,19 +108,19 @@ class _RateDriverScreenState extends State<RateDriverScreen> {
                       backgroundImage: AssetImage("assets/profile.png"),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.assignment.driverName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          const SizedBox(height: 2),
-                          Text("${widget.assignment.vehicleModel}"),
-                        ],
-                      ),
-                    ),
+                    // Expanded(
+                    //   child: Column(
+                    //     crossAxisAlignment: CrossAxisAlignment.start,
+                    //     children: [
+                    //       Text(
+                    //         widget.assignment.driverName,
+                    //         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    //       ),
+                    //       const SizedBox(height: 2),
+                    //       Text("${widget.assignment.vehicleModel}"),
+                    //     ],
+                    //   ),
+                    // ),
                   ],
                 ),
 

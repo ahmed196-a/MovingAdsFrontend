@@ -47,38 +47,38 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     }
   }
 
-  Future<void> _applyRequest() async {
-    if (selectedRegNo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a vehicle")),
-      );
-      return;
-    }
-
-    if (userid == null) return;
-
-    try {
-      String result = await RequestApiService.createRequest(
-        Request(
-          requestedBy: userid!,
-          requestedTo: widget.ad.userId,
-          adId: widget.ad.adId,
-          vehReg: selectedRegNo!,
-        ),
-      );
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(result)));
-
-      setState(() {
-        requestStatus[selectedRegNo!] = true;
-      });
-
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
-  }
+  // Future<void> _applyRequest() async {
+  //   if (selectedRegNo == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Please select a vehicle")),
+  //     );
+  //     return;
+  //   }
+  //
+  //   if (userid == null) return;
+  //
+  //   try {
+  //     String result = await RequestApiService.createRequest(
+  //       Request(
+  //         requestedBy: userid!,
+  //         requestedTo: widget.ad.userId,
+  //         adId: widget.ad.adId,
+  //         vehReg: selectedRegNo!,
+  //       ),
+  //     );
+  //
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text(result)));
+  //
+  //     setState(() {
+  //       requestStatus[selectedRegNo!] = true;
+  //     });
+  //
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text("Error: $e")));
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -182,88 +182,88 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             const SizedBox(height: 20),
 
             /// 🔽 VEHICLE DROPDOWN
-            DropdownButtonFormField<String>(
-              value: selectedRegNo,
-              hint: const Text("Select Vehicle"),
-              items: regnoList.map((reg) {
-                return DropdownMenuItem(
-                  value: reg,
-                  child: Text(reg),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedRegNo = value;
-                });
-              },
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[300],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
+            // DropdownButtonFormField<String>(
+            //   value: selectedRegNo,
+            //   hint: const Text("Select Vehicle"),
+            //   items: regnoList.map((reg) {
+            //     return DropdownMenuItem(
+            //       value: reg,
+            //       child: Text(reg),
+            //     );
+            //   }).toList(),
+            //   onChanged: (value) {
+            //     setState(() {
+            //       selectedRegNo = value;
+            //     });
+            //   },
+            //   decoration: InputDecoration(
+            //     filled: true,
+            //     fillColor: Colors.grey[300],
+            //     border: OutlineInputBorder(
+            //       borderRadius: BorderRadius.circular(10),
+            //       borderSide: BorderSide.none,
+            //     ),
+            //   ),
+            // ),
+            //
+            // const SizedBox(height: 24),
 
             /// 🔵 CONDITIONAL APPLY BUTTON
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: selectedRegNo == null
-                  ? ElevatedButton(
-                onPressed: null,
-                child: const Text("Apply"),
-              )
-                  : FutureBuilder<bool>(
-                future: requestStatus.containsKey(selectedRegNo)
-                    ? Future.value(requestStatus[selectedRegNo])
-                    : RequestApiService.existsRequest(
-                  Request(
-                    requestedBy: userid!,
-                    requestedTo: ad.userId,
-                    adId: ad.adId,
-                    vehReg: selectedRegNo!,
-                  ),
-                ),
-                builder: (context, snapshot) {
-
-                  if (!snapshot.hasData) {
-                    return const Center(
-                        child: CircularProgressIndicator());
-                  }
-
-                  bool isApplied = snapshot.data!;
-                  requestStatus[selectedRegNo!] = isApplied;
-
-                  if (isApplied) {
-                    return ElevatedButton(
-                      onPressed: null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                      ),
-                      child: const Text(
-                        "Applied",
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    );
-                  }
-
-                  return ElevatedButton(
-                    onPressed: _applyRequest,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                    ),
-                    child: const Text(
-                      "Apply",
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  );
-                },
-              ),
-            ),
+            // SizedBox(
+            //   width: double.infinity,
+            //   height: 50,
+            //   child: selectedRegNo == null
+            //       ? ElevatedButton(
+            //     onPressed: null,
+            //     child: const Text("Apply"),
+            //   )
+            //       : FutureBuilder<bool>(
+            //     future: requestStatus.containsKey(selectedRegNo)
+            //         ? Future.value(requestStatus[selectedRegNo])
+            //         : RequestApiService.existsRequest(
+            //       Request(
+            //         requestedBy: userid!,
+            //         requestedTo: ad.userId,
+            //         adId: ad.adId,
+            //         vehReg: selectedRegNo!,
+            //       ),
+            //     ),
+            //     builder: (context, snapshot) {
+            //
+            //       if (!snapshot.hasData) {
+            //         return const Center(
+            //             child: CircularProgressIndicator());
+            //       }
+            //
+            //       bool isApplied = snapshot.data!;
+            //       requestStatus[selectedRegNo!] = isApplied;
+            //
+            //       if (isApplied) {
+            //         return ElevatedButton(
+            //           onPressed: null,
+            //           style: ElevatedButton.styleFrom(
+            //             backgroundColor: Colors.grey,
+            //           ),
+            //           child: const Text(
+            //             "Applied",
+            //             style: TextStyle(fontSize: 18),
+            //           ),
+            //         );
+            //       }
+            //
+            //       return ElevatedButton(
+            //         onPressed: _applyRequest,
+            //         style: ElevatedButton.styleFrom(
+            //           backgroundColor: Colors.blue,
+            //         ),
+            //         child: const Text(
+            //           "Apply",
+            //           style: TextStyle(fontSize: 18),
+            //         ),
+            //       );
+            //     },
+            //   ),
+            // ),
           ],
         ),
       ),

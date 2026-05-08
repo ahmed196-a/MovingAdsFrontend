@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../UserSession.dart';
+
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -8,7 +12,46 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
+  String name = "";
+  String email = "";
+  String role = "";
+  double rating = 0.0;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      name   = prefs.getString('username') ?? "Unknown";
+      email  = prefs.getString('email')    ?? "";
+      role   = prefs.getString('role')     ?? "";
+      rating = prefs.getDouble('rating')   ?? 0.0;
+    });
+  }
+
+  // ── Build star row based on rating (0–5) ─────────────────
+  Widget _buildStars(double rating) {
+    final int fullStars  = rating.floor().clamp(0, 5);
+    final bool halfStar  = (rating - fullStars) >= 0.5;
+    final int emptyStars = (5 - fullStars - (halfStar ? 1 : 0)).clamp(0, 5);
+
+    return Row(
+      children: [
+        ...List.generate(fullStars,  (_) => const Icon(Icons.star,          color: Colors.amber, size: 18)),
+        if (halfStar)                        const Icon(Icons.star_half,     color: Colors.amber, size: 18),
+        ...List.generate(emptyStars, (_) => const Icon(Icons.star_border,   color: Colors.amber, size: 18)),
+        const SizedBox(width: 6),
+        Text(
+          rating.toStringAsFixed(1),
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,32 +103,24 @@ class _AccountScreenState extends State<AccountScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        "Ahmed Abbas",
-                        style: TextStyle(
+                        name,
+                        style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 4),
-                      Chip(
-                        label: Text("Advertiser"),
-                        backgroundColor: Colors.teal,
-                        labelStyle:
-                        TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                      SizedBox(height: 4),
-                      Text("Email: ahmed123@gmail.com"),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.star, color: Colors.amber, size: 18),
-                          Icon(Icons.star, color: Colors.amber, size: 18),
-                          Icon(Icons.star, color: Colors.amber, size: 18),
-                          Icon(Icons.star, color: Colors.amber, size: 18),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text("Completed Ads : 1"),
+                      const SizedBox(height: 4),
+                      if (role == 'a' || role == 'd')
+                        Chip(
+                          label: Text(role == 'a' ? "Advertiser" : "Driver"),
+                          backgroundColor: Colors.teal,
+                          labelStyle: const TextStyle(
+                              color: Colors.white, fontSize: 12),
+                        ),
+                      const SizedBox(height: 4),
+                      Text("Email: $email"),
+                      const SizedBox(height: 6),
+                      _buildStars(rating),
                     ],
                   ),
                 ),
@@ -114,8 +149,8 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
                 child: const Text(
                   "Edit Profile",
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -130,7 +165,9 @@ class _AccountScreenState extends State<AccountScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  await UserSession.logout();
+                  if (!mounted) return;
                   Navigator.pushReplacementNamed(context, "/login");
                 },
                 style: ElevatedButton.styleFrom(
@@ -141,8 +178,8 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
                 child: const Text(
                   "Logout",
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -151,7 +188,6 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: 20),
         ],
       ),
-
     );
   }
 }

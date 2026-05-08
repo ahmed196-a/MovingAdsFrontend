@@ -302,18 +302,18 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                                             color: Colors.grey)),
                                     const SizedBox(
                                         height: 6),
-                                    Row(
-                                      children: const [
-                                        Icon(Icons
-                                            .location_on,
-                                            size: 16),
-                                        SizedBox(
-                                            width: 6),
-                                        Expanded(
-                                            child: Text(
-                                                "6 Road, Rawalpindi")),
-                                      ],
-                                    ),
+                                    // Row(
+                                    //   children: const [
+                                    //     Icon(Icons
+                                    //         .location_on,
+                                    //         size: 16),
+                                    //     SizedBox(
+                                    //         width: 6),
+                                        // Expanded(
+                                        //     child: Text(
+                                        //         "6 Road, Rawalpindi")),
+                                    //   ],
+                                    // ),
                                   ],
                                 ),
                               ),

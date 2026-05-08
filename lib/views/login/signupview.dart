@@ -42,6 +42,9 @@ class _SignupViewState extends State<SignupView> {
     else if(_selectedRole=="Advertiser") {
       role = 'a';
     }
+    else if(_selectedRole=="Agency"){
+      role = 'g';
+    }
     final user=AppUser(name: name, email: email, password: password, role: role);
     final result=await ApiService.signup(user);
     if(result=='success'){
@@ -185,7 +188,7 @@ class _SignupViewState extends State<SignupView> {
                     context: context,
                     builder: (_) => Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: ["Driver", "Advertiser"]
+                      children: ["Driver", "Advertiser","Agency"]
                           .map(
                             (role) => ListTile(
                           title: Text(role),

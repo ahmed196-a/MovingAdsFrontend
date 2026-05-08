@@ -56,7 +56,7 @@ class _RequestScreenState extends State<RequestScreen> {
       requestedTo: userId!,
       status: status,
       adId: request.adId,
-      vehReg: request.vehReg,
+      agencyId: request.agencyId,
     );
 
     if (success) {
@@ -203,7 +203,7 @@ class _RequestScreenState extends State<RequestScreen> {
                             height: 6),
 
                         Text(
-                          "Vehicle: ${request.vehReg}",
+                          "Agency: ${request.agencyId}",
                         ),
 
                         const SizedBox(

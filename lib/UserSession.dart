@@ -2,12 +2,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSession {
 
-  static Future<void> saveUser(int? id, String name, String role) async {
+  static Future<void> saveUser(int? id, String name, String role,String email,double rating) async {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('userId', id!);
     await prefs.setString('username', name);
     await prefs.setString('role', role);
+    await prefs.setString('email', email);
+    await prefs.setDouble('rating', rating);
   }
 
   static Future<int?> getUserId() async {
@@ -23,6 +25,16 @@ class UserSession {
   static Future<String?> getRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('role');
+  }
+
+  static Future<String?> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('email');
+  }
+
+  static Future<String?> getRating() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble('rating').toString();
   }
 
   static Future<void> logout() async {

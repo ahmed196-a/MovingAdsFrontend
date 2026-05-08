@@ -1,8 +1,10 @@
 import 'package:ads_frontend/views/advertiser/accountScreen.dart';
 import 'package:ads_frontend/views/advertiser/adScheduleScreen.dart';
 import 'package:ads_frontend/views/advertiser/addFence.dart';
+import 'package:ads_frontend/views/advertiser/addNewFenceScreen.dart';
 import 'package:ads_frontend/views/advertiser/matchedDriversScreen.dart';
-import 'package:ads_frontend/views/advertiser/requestsScreen.dart';
+
+import 'package:ads_frontend/views/advertiser/sentRequestsScreen.dart';
 import 'package:ads_frontend/views/advertiser/statsScreen.dart';
 import 'package:ads_frontend/views/advertiser/adDetailsScreen.dart';
 import 'package:flutter/material.dart';
@@ -31,12 +33,22 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
   void initState() {
     super.initState();
     _loadUser();
-    adsFuture = AdApiService.fetchAds();
   }
 
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getInt('userId');
+    setState(() {
+      adsFuture = AdApiService.fetchAdsByUser(userId!);
+    });
+  }
+
+  // ── Reload: re-fetch ads without re-reading SharedPreferences ──
+  Future<void> _reload() async {
+    if (userId == null) return;
+    setState(() {
+      adsFuture = AdApiService.fetchAdsByUser(userId!);
+    });
   }
 
   @override
@@ -75,7 +87,7 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const RequestScreen()),
+                      builder: (_) => const SentRequestScreen()),
                 );
               },
               child: Container(
@@ -93,7 +105,7 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                     Icon(Icons.people, color: Colors.black),
                     SizedBox(width: 10),
                     Text(
-                      "Your Requests",
+                      "Sent Requests",
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -134,33 +146,36 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                   return const Center(child: Text("No ads found."));
                 }
 
-                return ListView.builder(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: ads.length,
-                  itemBuilder: (context, index) {
-                    final ad = ads[index];
+                // ── PULL-TO-REFRESH wraps only the ListView ──
+                return RefreshIndicator(
+                  color: const Color(0xff00c4aa),
+                  onRefresh: _reload,
+                  child: ListView.builder(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: ads.length,
+                    itemBuilder: (context, index) {
+                      final ad = ads[index];
 
-                    // ✅ FIX: fetch fences only to SHOW COUNT,
-                    // not to disable the button
-                    return FutureBuilder<List<AdFence>>(
-                      future:
-                      AdFenceApiService.getFenceByAd(ad.adId),
-                      builder: (context, fenceSnapshot) {
-                        final fenceCount =
-                            fenceSnapshot.data?.length ?? 0;
-                        final isLoading = fenceSnapshot
-                            .connectionState ==
-                            ConnectionState.waiting;
+                      return FutureBuilder<List<AdFence>>(
+                        future:
+                        AdFenceApiService.getFenceByAd(ad.adId),
+                        builder: (context, fenceSnapshot) {
+                          final fenceCount =
+                              fenceSnapshot.data?.length ?? 0;
+                          final isLoading = fenceSnapshot
+                              .connectionState ==
+                              ConnectionState.waiting;
 
-                        return _buildAdCard(
-                          ad,
-                          fenceCount: fenceCount,
-                          isLoading: isLoading,
-                        );
-                      },
-                    );
-                  },
+                          return _buildAdCard(
+                            ad,
+                            fenceCount: fenceCount,
+                            isLoading: isLoading,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -204,8 +219,6 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
   }
 
   // ── Ad Card ──────────────────────────────────────────────
-  // fenceCount: how many fences already exist (just for display)
-  // The add-fence button is ALWAYS enabled now
   Widget _buildAdCard(Ad ad,
       {required int fenceCount, bool isLoading = false}) {
     return InkWell(
@@ -267,8 +280,6 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                             ),
                           ),
 
-                          // ✅ FIX: Fence icon — always clickable.
-                          // Badge shows existing fence count.
                           Stack(
                             clipBehavior: Clip.none,
                             children: [
@@ -276,7 +287,6 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                                 icon: Icon(
                                   Icons.location_on,
                                   size: 22,
-                                  // Blue = can add more, grey = loading
                                   color: isLoading
                                       ? Colors.grey
                                       : Colors.blue,
@@ -291,13 +301,14 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) =>
-                                          AddNewAdFenceScreen(
-                                              adId: ad.adId),
+                                          // AddNewAdFenceScreen(
+                                          //     adId: ad.adId),
+                                      AddFenceScreen(
+                                          adId: ad.adId),
                                     ),
                                   );
                                 },
                               ),
-                              // Badge: show count if > 0
                               if (fenceCount > 0)
                                 Positioned(
                                   top: 4,
@@ -346,14 +357,6 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
                       Text(
                         ad.Category ?? "General",
                         style: const TextStyle(fontSize: 13),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: const [
-                          Icon(Icons.location_on, size: 16),
-                          SizedBox(width: 6),
-                          Expanded(child: Text("Rawalpindi")),
-                        ],
                       ),
                     ],
                   ),

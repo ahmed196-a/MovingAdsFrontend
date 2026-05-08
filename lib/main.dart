@@ -1,4 +1,5 @@
 import 'package:ads_frontend/views/advertiser/home.dart';
+import 'package:ads_frontend/views/agency/home.dart';
 import 'package:ads_frontend/views/driver/home.dart';
 import 'package:ads_frontend/views/login/SignupView.dart';
 import 'package:ads_frontend/views/login/loginview.dart';
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignupView(),
         '/advertiserDashboard': (context) => const AdvertiserHomeScreen(),
          '/driverDashboard': (context) => const DriverHomeScreen(),
+        '/agencyDashboard':(context)=> const AgencyHomeScreen(),
       },
     );
   }

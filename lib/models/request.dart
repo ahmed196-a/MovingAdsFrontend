@@ -3,7 +3,7 @@ class Request {
   final int requestedBy;
   final int requestedTo;
   final int adId;
-  final String vehReg;
+  final int agencyId;
   String? status;
 
   // Optional joined info
@@ -16,7 +16,7 @@ class Request {
     required this.requestedBy,
     required this.requestedTo,
     required this.adId,
-    required this.vehReg,
+    required this.agencyId,
     this.status,
     this.fromUser,
     this.toUser,
@@ -29,7 +29,7 @@ class Request {
       requestedBy: json['RequestedBy'] ?? 0,
       requestedTo: json['RequestedTo'] ?? 0,
       adId: json['AdId'] ?? 0,
-      vehReg: json['VehReg'] ?? '',
+      agencyId: json['AgencyId'] ?? '',
       status: json['Status'],
       fromUser: json['FromUser'],
       toUser: json['ToUser'],
@@ -43,7 +43,7 @@ class Request {
       "RequestedBy": requestedBy,
       "RequestedTo": requestedTo,
       "AdId": adId,
-      "VehReg": vehReg,
+      "AgencyId": agencyId,
       "Status": status,
       "FromUser": fromUser,
       "ToUser": toUser,
