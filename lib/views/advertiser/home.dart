@@ -2,6 +2,7 @@ import 'package:ads_frontend/views/advertiser/accountScreen.dart';
 import 'package:ads_frontend/views/advertiser/adScheduleScreen.dart';
 import 'package:ads_frontend/views/advertiser/addFence.dart';
 import 'package:ads_frontend/views/advertiser/addNewFenceScreen.dart';
+import 'package:ads_frontend/views/advertiser/advertiser_billing_screen.dart';
 import 'package:ads_frontend/views/advertiser/matchedDriversScreen.dart';
 
 import 'package:ads_frontend/views/advertiser/sentRequestsScreen.dart';
@@ -234,14 +235,17 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
         onTap: (index) {
           if (index == currentIndex) return;
           setState(() => currentIndex = index);
-
           if (index == 1) {
             Navigator.push(context,
+                MaterialPageRoute(builder: (_) => AdvertiserBillingScreen(userId: userId!)));
+          }
+          else if (index == 2) {
+            Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const StatsScreen()));
-          } else if (index == 2) {
+          } else if (index == 3) {
             Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const MyAdsScreen()));
-          } else if (index == 3) {
+          } else if (index == 4) {
             Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const AccountScreen()));
@@ -251,9 +255,11 @@ class _AdvertiserHomeScreenState extends State<AdvertiserHomeScreen> {
           BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded), label: "Home"),
           BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long), label: "Billing"),
+          BottomNavigationBarItem(
               icon: Icon(Icons.bar_chart_rounded), label: "Stats"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded), label: "My Ads"),
+              icon: Icon(Icons.ads_click), label: "My Ads"),
           BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded), label: "Account"),
         ],

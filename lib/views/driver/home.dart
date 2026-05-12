@@ -1,3 +1,4 @@
+import 'package:ads_frontend/views/driver/driver_billing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -268,11 +269,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => DriverStatsScreen(userid: _userId),
+                    builder: (_) => DriverBillingScreen(vehicleOwnerId: _userId!),
                   ));
               break;
 
             case 2:
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DriverStatsScreen(userid: _userId),
+                  ));
+              break;
+
+            case 3:
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -286,6 +295,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
             label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Earning',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),

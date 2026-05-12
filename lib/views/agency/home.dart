@@ -9,6 +9,8 @@ import '../../services/agencyApiService.dart';
 import '../advertiser/requestsScreen.dart';
 import '../advertiser/accountScreen.dart';
 import '../../services/simulation_api_service.dart';
+import 'agency_billing_screen.dart';
+import 'agency_payments_screens.dart';
 
 class AgencyHomeScreen extends StatefulWidget {
   const AgencyHomeScreen({super.key});
@@ -188,14 +190,20 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
         onTap: (index) {
           if (index == _currentIndex) return;
           setState(() => _currentIndex = index);
-
           if (index == 1) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => SimulationFormScreen(agency: _agency!)),
+                  builder: (_) => BillingScreen(agencyId: _agency!.agencyId)),
             );
-          } else if (index == 2) {
+          }
+          else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => AgencyPaymentsScreens(agencyId: _agency!.agencyId)),
+            );
+          } else if (index == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AccountScreen()),
@@ -205,7 +213,9 @@ class _AgencyHomeScreenState extends State<AgencyHomeScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Activity'),
+              icon: Icon(Icons.receipt_long), label: 'Billing'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: 'Payments'),
           BottomNavigationBarItem(
               icon: Icon(Icons.person_outline), label: 'Account'),
         ],
